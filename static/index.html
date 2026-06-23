@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hello Kitty Kawaii Chat</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+    <!-- Feather Icons -->
+    <script src="https://unpkg.com/feather-icons"></script>
+    
+    <!-- LINK TO YOUR CSS FILE -->
+    <link rel="stylesheet" href="styles.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'fredoka': ['Fredoka', 'sans-serif'],
+                        'quicksand': ['Quicksand', 'sans-serif'],
+                    },
+                    colors: {
+                        hk: {
+                            light: '#ffe5ec',
+                            pink: '#ffb3c6',
+                            hotpink: '#ff8fab',
+                            darkpink: '#fb6f92',
+                            red: '#ff5252',
+                            text: '#5C4033'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<script src="app.js"></script>
+<body class="h-screen w-full font-quicksand flex items-center justify-center p-4 md:p-6 lg:p-10 overflow-hidden">
+
+    <!-- Main App Container -->
+    <div class="glass-panel w-full max-w-6xl h-full max-h-[900px] rounded-[40px] flex overflow-hidden relative">
+        
+        <!-- Sidebar -->
+        <div class="w-full md:w-80 lg:w-96 flex flex-col border-r-2 border-hk-pink/30 bg-white/40 z-10 flex-shrink-0 transition-all duration-300">
+            
+            <!-- Sidebar Header (Logo) -->
+            <div class="p-6 flex items-center gap-3 border-b-2 border-hk-pink/20">
+                <!-- SVG Hello Kitty Bow -->
+                <svg width="40" height="30" viewBox="0 0 100 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="filter drop-shadow-md">
+                    <path d="M50 40C62 40 70 30 70 15C70 5 50 15 50 15C50 15 30 5 30 15C30 30 38 40 50 40Z" fill="#ff5252"/>
+                    <path d="M10 40C10 20 30 15 45 40C45 65 30 75 10 50Z" fill="#ff5252"/>
+                    <path d="M90 40C90 20 70 15 55 40C55 65 70 75 90 50Z" fill="#ff5252"/>
+                    <circle cx="50" cy="42" r="12" fill="white" stroke="#ff5252" stroke-width="3"/>
+                </svg>
+                <h1 class="font-fredoka text-2xl text-hk-darkpink tracking-wide">KittyChat</h1>
+            </div>
+
+            <!-- Top Menu Bar (Tabs) -->
+            <div class="px-5 pt-5 pb-3">
+                <div class="bg-hk-light rounded-full p-1.5 flex shadow-inner border border-hk-pink/30 relative">
+                    <button id="btn-global" onclick="switchTab('global')" class="flex-1 py-2.5 rounded-full bg-white text-hk-darkpink font-bold hk-shadow transition-all duration-300 text-sm focus:outline-none">
+                        Global Chatrooms
+                    </button>
+                    <button id="btn-dms" onclick="switchTab('dms')" class="flex-1 py-2.5 rounded-full text-hk-text/60 font-bold hover:text-hk-darkpink transition-all duration-300 text-sm focus:outline-none">
+                        DM's
+                    </button>
+                </div>
+            </div>
+
+            <!-- List Area -->
+            <div class="flex-1 overflow-y-auto px-3 pb-4">
+                
+                <!-- Global Chatrooms List -->
+                <div id="tab-global" class="tab-content active space-y-1">
+                    <div class="flex items-center gap-4 p-3 rounded-2xl hover:bg-white cursor-pointer transition-all duration-200 group border border-transparent hover:border-hk-pink/40 hover:shadow-sm">
+                        <div class="w-12 h-12 rounded-full bg-pink-100 flex items-center justify-center text-hk-hotpink group-hover:bg-hk-hotpink group-hover:text-white transition-colors">
+                            <i data-feather="hash" class="w-5 h-5"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-hk-text text-base">Room Name</h3>
+                            <p class="text-xs text-hk-text/60 truncate">Latest message preview...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DMs List -->
+                <div id="tab-dms" class="tab-content space-y-1">
+                    <div class="flex items-center gap-4 p-3 rounded-2xl hover:bg-white cursor-pointer transition-all duration-200 group border border-transparent hover:border-hk-pink/40 hover:shadow-sm">
+                        <div class="w-12 h-12 rounded-full overflow-hidden bg-gray-100 border-2 border-white hk-shadow flex items-center justify-center text-gray-400">
+                            <i data-feather="user" class="w-6 h-6"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-hk-text text-base">User Name</h3>
+                            <p class="text-xs text-hk-text/60 truncate">Latest message preview...</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            
+            <!-- User Profile Bottom -->
+            <div class="p-4 border-t border-hk-pink/30 bg-white/60 backdrop-blur-sm mt-auto flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full border-2 border-white hk-shadow bg-hk-pink flex items-center justify-center text-white">
+                        <i data-feather="user" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sm text-hk-text">Username</h4>
+                        <p class="text-[10px] text-green-500 font-bold flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500 inline-block"></span> Online</p>
+                    </div>
+                </div>
+                <button class="p-2 text-hk-text/50 hover:text-hk-hotpink hover:bg-pink-100 rounded-full transition-colors">
+                    <i data-feather="settings" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="hidden md:flex flex-1 flex-col bg-white/60 relative">
+            
+            <!-- Chat Header -->
+            <div class="h-20 px-6 border-b-2 border-hk-pink/20 flex items-center justify-between bg-white/70 backdrop-blur-md z-10 sticky top-0">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-hk-hotpink flex items-center justify-center text-white shadow-md">
+                        <i data-feather="hash" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-fredoka text-xl text-hk-darkpink">Chat / Room Name</h2>
+                        <p class="text-xs text-hk-text/60 font-medium">0 Members • 0 Online</p>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <button class="w-10 h-10 rounded-full bg-hk-light text-hk-hotpink flex items-center justify-center hover:bg-hk-pink hover:text-white transition-colors">
+                        <i data-feather="phone" class="w-4 h-4"></i>
+                    </button>
+                    <button class="w-10 h-10 rounded-full bg-hk-light text-hk-hotpink flex items-center justify-center hover:bg-hk-pink hover:text-white transition-colors">
+                        <i data-feather="video" class="w-4 h-4"></i>
+                    </button>
+                    <button class="w-10 h-10 rounded-full bg-hk-light text-hk-hotpink flex items-center justify-center hover:bg-hk-pink hover:text-white transition-colors">
+                        <i data-feather="info" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Chat Messages -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-gradient-to-b from-transparent to-white/30 relative">
+                <div class="absolute top-10 right-10 opacity-20 pointer-events-none">
+                    <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ff8fab" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                </div>
+
+                <div class="flex justify-center">
+                    <span class="bg-hk-light text-hk-darkpink text-xs font-bold px-4 py-1 rounded-full shadow-sm border border-hk-pink/30">Date / Time</span>
+                </div>
+
+                <!-- Them (Message) Template -->
+                <div class="flex gap-4 items-end max-w-[80%]">
+                    <div class="w-8 h-8 rounded-full shadow-sm mb-1 bg-gray-100 border-2 border-white flex items-center justify-center text-gray-400">
+                        <i data-feather="user" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs text-hk-text/60 ml-2 mb-1 block font-bold">Sender Name</span>
+                        <div class="bg-white text-hk-text p-4 rounded-[24px] chat-bubble-them shadow-sm border border-hk-pink/20">
+                            Incoming message template...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Me (Message) Template -->
+                <div class="flex gap-4 items-end justify-end max-w-[80%] ml-auto">
+                    <div class="flex flex-col items-end">
+                        <div class="bg-gradient-to-r from-hk-hotpink to-hk-darkpink text-white p-4 rounded-[24px] chat-bubble-me shadow-md">
+                            Outgoing message template...
+                        </div>
+                        <span class="text-[10px] text-hk-text/40 mt-1 mr-2 font-bold">Status / Time</span>
+                    </div>
+                </div>
+
+                <div class="h-4"></div>
+            </div>
+
+            <!-- Chat Input Area -->
+            <div class="p-4 md:p-6 bg-white/70 backdrop-blur-md border-t-2 border-hk-pink/20 sticky bottom-0">
+                <div class="flex items-center gap-3 bg-white p-2 rounded-full shadow-sm border-2 border-hk-pink/30 focus-within:border-hk-hotpink focus-within:shadow-md transition-all duration-300">
+                    <button class="p-2 text-hk-hotpink hover:bg-hk-light rounded-full transition-colors flex-shrink-0">
+                        <i data-feather="smile" class="w-6 h-6"></i>
+                    </button>
+                    <button class="p-2 text-hk-text/40 hover:text-hk-hotpink hover:bg-hk-light rounded-full transition-colors flex-shrink-0 hidden sm:block">
+                        <i data-feather="paperclip" class="w-5 h-5"></i>
+                    </button>
+                    
+                    <input type="text" placeholder="Type a message..." class="flex-1 bg-transparent border-none focus:outline-none text-hk-text placeholder-hk-text/40 font-medium px-2">
+                    
+                    <button class="w-12 h-12 bg-hk-red hover:bg-[#ff3333] text-white rounded-full flex items-center justify-center transition-transform transform active:scale-90 flex-shrink-0 shadow-lg">
+                        <i data-feather="send" class="w-5 h-5 ml-1"></i>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Initialize Icons & Tab Logic -->
+    <script>
+        feather.replace();
+
+        function switchTab(tabName) {
+            const btnGlobal = document.getElementById('btn-global');
+            const btnDms = document.getElementById('btn-dms');
+            
+            if (tabName === 'global') {
+                btnGlobal.classList.add('bg-white', 'text-hk-darkpink', 'hk-shadow');
+                btnGlobal.classList.remove('text-hk-text/60');
+                btnDms.classList.remove('bg-white', 'text-hk-darkpink', 'hk-shadow');
+                btnDms.classList.add('text-hk-text/60');
+                document.getElementById('tab-global').classList.add('active');
+                document.getElementById('tab-dms').classList.remove('active');
+            } else {
+                btnDms.classList.add('bg-white', 'text-hk-darkpink', 'hk-shadow');
+                btnDms.classList.remove('text-hk-text/60');
+                btnGlobal.classList.remove('bg-white', 'text-hk-darkpink', 'hk-shadow');
+                btnGlobal.classList.add('text-hk-text/60');
+                document.getElementById('tab-dms').classList.add('active');
+                document.getElementById('tab-global').classList.remove('active');
+            }
+        }
+    </script>
+</body>
+</html>

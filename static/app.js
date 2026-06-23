@@ -1,0 +1,1 @@
+const websocketConnection = new WebSocket("ws://" + location.host + "/ws");
