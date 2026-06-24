@@ -1,3 +1,5 @@
+// Contains Hub struct and its mehtod
+
 package main
 
 import (
@@ -27,13 +29,12 @@ func (hub *Hub) remove(connection *websocket.Conn) {
 	delete(hub.connections, connection)
 	hub.mutex.Unlock()
 }
-func (hub *Hub) broadcast(sender *websocket.Conn, message []byte) {
+func (hub *Hub) broadcast(outgoingJSON []byte) {
 	hub.mutex.Lock()
 	defer hub.mutex.Unlock()
-
 	for connection := range hub.connections {
 		// send message to (connection)
-		connection.WriteMessage(websocket.TextMessage, message)
+		connection.WriteMessage(websocket.TextMessage, outgoingJSON)
 	}
 }
 

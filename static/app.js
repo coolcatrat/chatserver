@@ -27,20 +27,46 @@ webSocketConnection.onclose = function () {
 // INCOMING  (server -> browser)
 // ===========================================================================
 webSocketConnection.onmessage = function (receivedEvent) {
-  const messageLineElement = document.createElement("div");
-  messageLineElement.className = "messageLine";     
-  messageLineElement.textContent = receivedEvent.data;
-  messageDisplayWindow.appendChild(messageLineElement);  
+  let parsedMessage;
+  try{
+    parsedMessage = JSON.parse(receivedEvent.data);
+  }catch(parseError) {
+    console.error("bad json from server: ",receivedEvent.data,parseError);
+    return;
+  }
+
+  switch(parsedMessage.type){
+    case "message":
+      displayChatMessage(parsedMessage);
+      break;
+    default:
+      console.warn("unkown message type: ", parsedMessage.type);
+  }
 };
 
+function displayChatMessage(chatMessage) {
+  const messageLineElement = document.createElement("div");
+  messageLineElement.className = "messageLine";
+  messageLineElement.textContent = chatMessage.sender + ": " + chatMessage.text;
+  messageDisplayWindow.appendChild(messageLineElement);
+  messageDisplayWindow.scrollTop = messageDisplayWindow.scrollHeight; // keep newest in view
+}
 // ===========================================================================
 // OUTGOING  (browser -> server)
 // ===========================================================================
 function sendCurrentInput() {
-  const message = messageInputField.value;
-  if(message == "") return;
-  webSocketConnection.send(message);
+  const messageText = messageInputField.value.trim();
+  if(messageText === "") return;
+
+  const outgoingMessage = {
+    type: "message",
+    text: messageText,
+  }
+
+  webSocketConnection.send(JSON.stringify(outgoingMessage));
   messageInputField.value = "";
+
+
 }
 
 

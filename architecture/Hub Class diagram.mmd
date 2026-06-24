@@ -1,0 +1,15 @@
+---
+references:
+  - "File: /hub.go"
+generationTime: 2026-06-24T12:23:48.667Z
+---
+classDiagram
+    class Hub {
+        +Mutex mutex
+        +map[*websocket.Conn]bool connections
+        +newHub() *Hub
+        +add(*websocket.Conn connection) void
+        +remove(*websocket.Conn connection) void
+        +broadcast(*websocket.Conn sender, []byte message) void
+        +handleUpgradeToWebsocket(http.ResponseWriter writer, *http.Request request) void
+    }
