@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -14,18 +15,19 @@ import (
 type MessageType string
 
 const (
-	MessageTypeChat MessageType = "message"
+	MessageTypeChat    MessageType = "message"
+	MessageTypeSetName MessageType = "setName"
 	// future: MessageTypeJoin, MessageTypeLeave, MessageTypeCreateRoom
 )
 
-type IncomingMessage struct {
+type IncomingChatMessage struct {
 	MessageType MessageType `json:"type"`
 	RoomID      RoomID      `json:"roomID"`
 	Text        string      `json:"text"`
 }
 
 // the authoritative broadcast record the server constructs
-type OutgoingMessage struct {
+type OutgoingChatMessage struct {
 	MessageType MessageType `json:"type"`
 	RoomID      RoomID      `json:"roomID"`
 	RoomName    string      `json:"roomName"`
@@ -34,9 +36,15 @@ type OutgoingMessage struct {
 	Timestamp   int64       `json:"timestamp"` // server stamps on receiptIncomingMessage
 }
 
-// connection.SetReadDeadline(deadline)
-// connection.SetPongHandler(callback) - register a function to handle when a callback arrives, just reset the deadline. runs inside readloop
-// connection.WriteControl
+// JSON message (both incoming and outgoing) for setting display name for client.
+// server -> client: your authoritative identity
+type SetNameMessage struct {
+	MessageType MessageType `json:"type"`
+	DisplayName string      `json:"displayName"`
+}
+
+const maxDisplayNameLength = 24
+
 const (
 	pongWait   = 60 * time.Second    // max silence tolerated before declaring the client dead
 	pingPeriod = (pongWait * 9) / 10 // = 54s. send a ping this often
@@ -62,7 +70,7 @@ func (client *Client) readLoop(hub *Hub) {
 		}
 
 		// parse JSON, continue if badJSON.
-		var incomingJSON IncomingMessage
+		var incomingJSON IncomingChatMessage
 		if parseError := json.Unmarshal(rawMessageBytes, &incomingJSON); parseError != nil {
 			log.Println("bad JSON from :", client.connection.RemoteAddr(), parseError)
 			continue // skip iteration, dont return.
@@ -72,7 +80,8 @@ func (client *Client) readLoop(hub *Hub) {
 		switch incomingJSON.MessageType {
 		case MessageTypeChat:
 			client.handleChatMessage(hub, incomingJSON)
-			// next case MessageTypeJoin:
+		case MessageTypeSetName:
+			client.handleSetName(rawMessageBytes)
 		}
 
 	}
@@ -112,7 +121,7 @@ func (client *Client) writeLoop() {
 	}
 }
 
-func (client *Client) handleChatMessage(hub *Hub, chatMessage IncomingMessage) {
+func (client *Client) handleChatMessage(hub *Hub, chatMessage IncomingChatMessage) {
 	hub.mutex.RLock()
 	room, roomExists := hub.roomsByID[chatMessage.RoomID]
 	hub.mutex.RUnlock()
@@ -122,7 +131,7 @@ func (client *Client) handleChatMessage(hub *Hub, chatMessage IncomingMessage) {
 	if !client.rooms[room] {
 		return // not a member; never joined
 	}
-	outgoingMessage := OutgoingMessage{
+	outgoingMessage := OutgoingChatMessage{
 		MessageType: MessageTypeChat,
 		RoomID:      room.roomID,        // identity, for client-side routing
 		RoomName:    room.name,          // cosmetic, for display
@@ -135,4 +144,21 @@ func (client *Client) handleChatMessage(hub *Hub, chatMessage IncomingMessage) {
 		return
 	}
 	room.broadcast(payloadBytes)
+}
+
+func (client *Client) handleSetName(rawMessageBytes []byte) {
+	// parse JSON, continue if badJSON.
+	var incomingJSON SetNameMessage
+
+	if parseError := json.Unmarshal(rawMessageBytes, &incomingJSON); parseError != nil {
+		log.Println("bad JSON (in handleSetMessage) from :", client.connection.RemoteAddr(), parseError)
+		return // skip iteration, doinnt return.
+	}
+
+	displayName := strings.TrimSpace(incomingJSON.DisplayName)
+	if displayName == "" {
+		return
+	}
+	// set client's new display name
+	client.displayName = displayName
 }

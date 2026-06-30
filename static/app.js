@@ -14,6 +14,7 @@ const directMessageList         = document.getElementById("directMessageList");
 // ============
 const GLOBAL_ROOM_ID = "global";     // mirrors server's GlobalRoomID
 let currentRoomID = GLOBAL_ROOM_ID; 
+let ownDisplayName = null;            // set by server.
 
 // ===========================================================================
 // CONNECTION
@@ -23,6 +24,7 @@ const webSocketConnection = new WebSocket(`${webSocketProtocol}//${window.locati
 
 webSocketConnection.onopen = function () {
   connectionStatusIndicator.textContent = "connected";
+  promptForDisplayName();
 };
 
 webSocketConnection.onclose = function () {
@@ -33,8 +35,8 @@ webSocketConnection.onclose = function () {
 // INCOMING  (server -> browser) has to mirror OutgoingMessage defined on serverside
 // ===========================================================================
 const incomingMessageHandlers = {
-  message: displayChatMessage,
-  // welcome: handleWelcome
+  message: displayChatMessage,// display new incoming message
+
 };
 
 
@@ -70,6 +72,7 @@ function displayChatMessage(chatMessage) {
   messageDisplayWindow.appendChild(messageLineElement);
   messageDisplayWindow.scrollTop = messageDisplayWindow.scrollHeight; // keep newest in view
 }
+
 // ===========================================================================
 // OUTGOING  (browser -> server)
 // ===========================================================================
@@ -96,6 +99,25 @@ function sendCurrentInput() {
   messageInputField.value = "";
 }
 
+function sendSetDisplayName(displayName) {
+  sendToServer({ type: "setName", displayName: displayName });
+}
+
+// ===========
+// display name 
+// ===========
+
+
+
+function promptForDisplayName() {
+  const enteredName = window.prompt("Choose a display name:");
+  if (enteredName === null) return;        // Cancel → keep server placeholder
+  const trimmedName = enteredName.trim();
+  if (trimmedName === "") return;          // empty → keep placeholder
+  sendSetDisplayName(trimmedName);
+  connectionStatusIndicator.textContent = "connected as " + ownDisplayName;
+
+}
 
 
 // ===========================================================================
