@@ -54,6 +54,7 @@ func (client *Client) disconnect(hub *Hub) {
 	hub.mutex.Lock()
 	delete(hub.clientsBySessionID, client.sessionID)
 	hub.mutex.Unlock()
+	fmt.Printf("%s disconnected\n", client.sessionID)
 }
 
 // protects from a cascading hang.

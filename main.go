@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 )
 
@@ -13,5 +14,6 @@ func main() {
 
 	// create server object connected on port 9000, requests handled by serveMux router.
 	server := &http.Server{Addr: ":9000", Handler: serveMux}
+	fmt.Println("Server now listening on port 9000")
 	server.ListenAndServe()
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
@@ -19,15 +20,15 @@ const (
 
 type IncomingMessage struct {
 	MessageType MessageType `json:"type"`
-	RoomID      RoomID      `json:"room"`
+	RoomID      RoomID      `json:"roomID"`
 	Text        string      `json:"text"`
 }
 
 // the authoritative broadcast record the server constructs
 type OutgoingMessage struct {
 	MessageType MessageType `json:"type"`
-	RoomID      RoomID      `json:"RoomID"`
-	RoomName    string      `json:"RoomName"`
+	RoomID      RoomID      `json:"roomID"`
+	RoomName    string      `json:"roomName"`
 	Text        string      `json:"text"`
 	Sender      string      `json:"sender"`    // server fills from session ID
 	Timestamp   int64       `json:"timestamp"` // server stamps on receiptIncomingMessage
@@ -52,6 +53,8 @@ func (client *Client) readLoop(hub *Hub) {
 		return nil
 	})
 
+	fmt.Printf("Client %s now active.\n", client.displayName)
+
 	for {
 		_, rawMessageBytes, readError := client.connection.ReadMessage()
 		if readError != nil {
@@ -64,6 +67,7 @@ func (client *Client) readLoop(hub *Hub) {
 			log.Println("bad JSON from :", client.connection.RemoteAddr(), parseError)
 			continue // skip iteration, dont return.
 		}
+		fmt.Printf("Recieved %d bytes from %s: %s\n", len(rawMessageBytes), client.displayName, rawMessageBytes)
 
 		switch incomingJSON.MessageType {
 		case MessageTypeChat:
@@ -92,6 +96,7 @@ func (client *Client) writeLoop() {
 			if err != nil {
 				return
 			}
+			fmt.Printf("wrote to %s\n", client.displayName)
 		// pingPeriod elapsed.
 		case <-pingTicker.C:
 			client.connection.SetWriteDeadline(time.Now().Add(writeWait))                                // cap how long the write can block.
