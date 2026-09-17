@@ -10,23 +10,36 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// TYPE: CHAT
-// what a client is ENTITLED to assert
+// 1. Wire value : camelCase
+// 2. MessageYpe : PascalCase
+// 3. Struct - to fit all the fields.
 type MessageType string
 
 const (
-	MessageTypeChat    MessageType = "message"
-	MessageTypeSetName MessageType = "setName"
-	// future: MessageTypeJoin, MessageTypeLeave, MessageTypeCreateRoom
+	// need to see which types can collapse into one for both incoming/outgoing
+
+	// client requests
+	MessageTypeChat      MessageType = "message"
+	MessageTypeSetName   MessageType = "setName"
+	MessageTypeJoinRoom  MessageType = "joinRoom"
+	MessageTypeLeaveRoom MessageType = "leaveRoom"
+
+	MessageTypeCreateRoom MessageType = "createRoom"
+	MessageTypeListRooms  MessageType = "listRooms"
+	// server replies
+	MessageTypeRoomCreated MessageType = "roomCreated"
+	MessageTypeRoomJoined  MessageType = "roomJoined"
+	MessageTypeRoomLeft    MessageType = "roomLeft"
+	MessageTypeRoomList    MessageType = "roomList"
+	MessageTypeError       MessageType = "error"
 )
 
+// ----------- Chat messages ------------
 type IncomingChatMessage struct {
 	MessageType MessageType `json:"type"`
 	RoomID      RoomID      `json:"roomID"`
 	Text        string      `json:"text"`
 }
-
-// the authoritative broadcast record the server constructs
 type OutgoingChatMessage struct {
 	MessageType MessageType `json:"type"`
 	RoomID      RoomID      `json:"roomID"`
@@ -36,14 +49,41 @@ type OutgoingChatMessage struct {
 	Timestamp   int64       `json:"timestamp"` // server stamps on receiptIncomingMessage
 }
 
-// JSON message (both incoming and outgoing) for setting display name for client.
-// server -> client: your authoritative identity
+// --------- Set display name -----------
 type SetNameMessage struct {
 	MessageType MessageType `json:"type"`
 	DisplayName string      `json:"displayName"`
 }
 
 const maxDisplayNameLength = 24
+
+// ---------- Room Messages structs -----------
+type IncomingRoomMessage struct {
+	MessageType MessageType `json:"type"`
+	RoomID      RoomID      `json:"roomID"`
+	RoomName    string      `json:"roomName"`
+}
+type OutgoingRoomMessage struct {
+	MessageType MessageType `json:"type"`
+	RoomID      RoomID      `json:"roomID"`
+	RoomName    string      `json:"roomName,omitempty"`
+}
+
+// --------- Room list container --------------
+type RoomInfo struct {
+	RoomID   RoomID `json:"roomID"`
+	RoomName string `json:"roomName"`
+}
+type OutgoingRoomListMessage struct {
+	MessageType MessageType `json:"type"`
+	Rooms       []RoomInfo  `json:"rooms"`
+}
+
+// ---- error: reusable for every failure ----
+type ErrorMessage struct {
+	MessageType MessageType `json:"type"`
+	Text        string      `json:"text"`
+}
 
 const (
 	pongWait   = 60 * time.Second    // max silence tolerated before declaring the client dead
@@ -75,13 +115,22 @@ func (client *Client) readLoop(hub *Hub) {
 			log.Println("bad JSON from :", client.connection.RemoteAddr(), parseError)
 			continue // skip iteration, dont return.
 		}
-		fmt.Printf("Recieved %d bytes from %s: %s\n", len(rawMessageBytes), client.displayName, rawMessageBytes)
+		fmt.Printf("Received %d bytes from %s: %s\n", len(rawMessageBytes), client.displayName, rawMessageBytes)
 
+		// handle request with appropriate handler
 		switch incomingJSON.MessageType {
 		case MessageTypeChat:
 			client.handleChatMessage(hub, incomingJSON)
 		case MessageTypeSetName:
 			client.handleSetName(rawMessageBytes)
+		case MessageTypeCreateRoom:
+			client.handleCreateRoom(hub, rawMessageBytes)
+		case MessageTypeJoinRoom:
+			client.handleJoinRoom(hub, rawMessageBytes)
+		case MessageTypeLeaveRoom:
+			client.handleLeaveRoom(hub, rawMessageBytes)
+		case MessageTypeListRooms:
+			client.handleListRooms(hub)
 		}
 
 	}
@@ -145,7 +194,6 @@ func (client *Client) handleChatMessage(hub *Hub, chatMessage IncomingChatMessag
 	}
 	room.broadcast(payloadBytes)
 }
-
 func (client *Client) handleSetName(rawMessageBytes []byte) {
 	// parse JSON, continue if badJSON.
 	var incomingJSON SetNameMessage
@@ -161,4 +209,108 @@ func (client *Client) handleSetName(rawMessageBytes []byte) {
 	}
 	// set client's new display name
 	client.displayName = displayName
+}
+func (client *Client) handleCreateRoom(hub *Hub, rawMessageBytes []byte) {
+	var incomingMessage IncomingRoomMessage
+	if json.Unmarshal(rawMessageBytes, &incomingMessage) != nil {
+		return
+	}
+	roomName := strings.TrimSpace(incomingMessage.RoomName)
+	if roomName == "" {
+		client.sendError("room name cannot be empty")
+		return
+	}
+	// create new room.
+	newRoomInstance := newRoom(newRoomID(), roomName, VisibilityPublic)
+	// add room to hub.
+	hub.mutex.Lock()
+	hub.roomsByID[newRoomInstance.roomID] = newRoomInstance
+	hub.mutex.Unlock()
+	// add creator client to room.
+	newRoomInstance.addMember(client)
+
+	client.sendJSON(OutgoingRoomMessage{
+		MessageType: MessageTypeRoomCreated,
+		RoomID:      newRoomInstance.roomID,
+		RoomName:    newRoomInstance.name,
+	})
+}
+func (client *Client) handleLeaveRoom(hub *Hub, rawMessageBytes []byte) {
+	var incomingMessage IncomingRoomMessage
+	if json.Unmarshal(rawMessageBytes, &incomingMessage) != nil {
+		return
+	}
+	if incomingMessage.RoomID == GlobalRoomID {
+		return // do not allow to leave global
+	}
+	hub.mutex.RLock()
+	room, roomExists := hub.roomsByID[incomingMessage.RoomID]
+	hub.mutex.RUnlock()
+	if !roomExists {
+		return
+	}
+	if !client.rooms[room] {
+		return // not a member; nothing to do
+	}
+
+	room.removeMember(client)
+	client.sendJSON(OutgoingRoomMessage{
+		MessageType: MessageTypeRoomLeft,
+		RoomID:      room.roomID,
+	})
+}
+
+func (client *Client) handleJoinRoom(hub *Hub, rawMessageBytes []byte) {
+	var incomingMessage IncomingRoomMessage
+	if json.Unmarshal(rawMessageBytes, &incomingMessage) != nil {
+		return
+	}
+	hub.mutex.RLock()
+	room, roomExists := hub.roomsByID[incomingMessage.RoomID]
+	hub.mutex.RUnlock()
+	if !roomExists {
+		client.sendError("room does not exist")
+		return
+	}
+	if room.visibility == VisibilityPrivate {
+		client.sendError("cannot join a private room")
+		return
+	}
+	room.addMember(client)
+
+	client.sendJSON(OutgoingRoomMessage{
+		MessageType: MessageTypeRoomJoined,
+		RoomID:      room.roomID,
+		RoomName:    room.name,
+	})
+}
+
+func (client *Client) handleListRooms(hub *Hub) {
+	rooms := make([]RoomInfo, 0)
+	hub.mutex.RLock()
+	for _, room := range hub.roomsByID {
+		if room.visibility == VisibilityPrivate {
+			continue
+		}
+		rooms = append(rooms, RoomInfo{RoomID: room.roomID, RoomName: room.name})
+	}
+	hub.mutex.RUnlock()
+
+	client.sendJSON(OutgoingRoomListMessage{
+		MessageType: MessageTypeRoomList,
+		Rooms:       rooms,
+	})
+}
+
+// -------------- helper --------------------
+
+func (client *Client) sendJSON(message any) {
+	payloadBytes, marshalError := json.Marshal(message)
+	if marshalError != nil {
+		return
+	}
+	client.send(payloadBytes)
+}
+func (client *Client) sendError(text string) {
+	client.sendJSON(ErrorMessage{MessageType: MessageTypeError, Text: text})
 }

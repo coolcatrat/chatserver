@@ -1,0 +1,6 @@
+# Go build output
+chatserver.exe
+
+# React / Node
+web/node_modules/
+web/dist/

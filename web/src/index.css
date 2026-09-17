@@ -1,0 +1,134 @@
+/* Minimal, clear styling — a compact chat window centered on the page.
+   Same spirit as the original barebones client: monospace, no decoration,
+   just enough to see the regions as separate panes. */
+
+* {
+  box-sizing: border-box;
+}
+
+/* centre the app window in the viewport */
+body {
+  margin: 0;
+  font-family: monospace;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ddd;
+}
+
+/* the compact window: fixed size, sits in the middle */
+.app-window {
+  width: 860px;
+  height: 620px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #999;
+  background: #fff;
+}
+
+/* top: connection status */
+.status-bar {
+  padding: 8px;
+  background: #eee;
+  border-bottom: 1px solid #ccc;
+}
+
+/* second row: set-name and create-room controls */
+.toolbar {
+  display: flex;
+  gap: 16px;
+  padding: 8px;
+  border-bottom: 1px solid #ccc;
+}
+.toolbar input {
+  border: 1px solid #ccc;
+  padding: 6px;
+  font-family: inherit;
+}
+.toolbar button {
+  padding: 6px 10px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* middle: sidebar + chatbox side by side */
+.app-body {
+  flex: 1;
+  display: flex;
+  min-height: 0; /* lets the message window scroll instead of growing the window */
+}
+
+/* LEFT: room list */
+.sidebar {
+  width: 220px;
+  border-right: 1px solid #ccc;
+  padding: 8px 0;
+  overflow-y: auto;
+}
+.sidebar h3 {
+  font-size: 13px;
+  margin: 0 8px 8px;
+  color: #555;
+}
+.room-entry {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  padding: 6px 8px;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.room-entry:hover {
+  background: #f0f0f0;
+}
+.room-entry.active {
+  font-weight: bold;
+  background: #eef;
+}
+.leave-button {
+  margin: 0 8px 4px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* RIGHT: the open conversation */
+.chatbox {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.room-heading {
+  padding: 8px;
+  border-bottom: 1px solid #ccc;
+  margin: 0;
+  font-size: 16px;
+}
+.message-window {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+.message-line {
+  margin: 2px 0;
+}
+.composer {
+  display: flex;
+  border-top: 1px solid #ccc;
+}
+.composer input {
+  flex: 1;
+  border: none;
+  padding: 10px;
+  font-family: inherit;
+}
+.composer button {
+  padding: 10px 16px;
+  font-family: inherit;
+  cursor: pointer;
+}

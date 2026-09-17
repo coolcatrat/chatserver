@@ -26,10 +26,16 @@ type Client struct {
 	connection   *websocket.Conn
 	writeChannel chan []byte
 	done         chan struct{}
-	rooms        map[*Room]bool // for cleanup
+	rooms        map[*Room]bool // for client cleanup
 }
 
 const GlobalRoomID RoomID = "global"
+
+const (
+	VisibilityGlobal  = "global"
+	VisibilityPublic  = "public"
+	VisibilityPrivate = "private"
+)
 
 type Room struct {
 	roomID     RoomID           // server assigned value
@@ -64,13 +70,7 @@ func (client *Client) send(payloadBytes []byte) {
 	case <-client.done:
 	}
 }
-func newSessionID() SessionID {
-	randomBytes := make([]byte, 16)
-	if _, randomError := rand.Read(randomBytes); randomError != nil {
-		panic(randomError) // crypto/rand not working
-	}
-	return SessionID(hex.EncodeToString(randomBytes))
-}
+
 func newClient(connection *websocket.Conn, sessionID SessionID) *Client {
 	return &Client{
 		sessionID:    sessionID,
@@ -95,6 +95,7 @@ func newRoom(roomID RoomID, name string, visibility string) *Room {
 		members:    make(map[*Client]bool),
 	}
 }
+
 func (room *Room) broadcast(payloadBytes []byte) {
 	room.mutex.RLock()
 	recipients := make([]*Client, 0, len(room.members))
@@ -114,6 +115,13 @@ func (room *Room) addMember(client *Client) {
 
 	client.rooms[room] = true // owned by one goroutine → unlocked
 }
+func (room *Room) removeMember(client *Client) {
+	room.mutex.Lock()
+	delete(room.members, client) // i think mutex needed here
+	room.mutex.Unlock()
+
+	delete(client.rooms, room)
+}
 
 // methods for Hub
 
@@ -122,7 +130,7 @@ func newHub() *Hub {
 		clientsBySessionID: make(map[SessionID]*Client),
 		roomsByID:          make(map[RoomID]*Room),
 	}
-	globalRoom := newRoom(GlobalRoomID, "Global", "global")
+	globalRoom := newRoom(GlobalRoomID, "Global", VisibilityGlobal)
 	hub.roomsByID[GlobalRoomID] = globalRoom
 	return hub
 }
@@ -153,3 +161,16 @@ func (hub *Hub) register(client *Client) {
 
 	globalRoom.addMember(client)
 }
+
+// helper functions
+
+// generate unique 16 byte ID
+func randomHexIdentifier() string {
+	randomBytes := make([]byte, 16)
+	if _, randomError := rand.Read(randomBytes); randomError != nil {
+		panic(randomError) // crypto/rand not working
+	}
+	return hex.EncodeToString(randomBytes)
+}
+func newSessionID() SessionID { return SessionID(randomHexIdentifier()) }
+func newRoomID() RoomID       { return RoomID(randomHexIdentifier()) }
